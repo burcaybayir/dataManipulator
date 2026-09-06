@@ -42,12 +42,22 @@ class PreparedChart:
         spec: The spec these values came from.
         y_domain: ``(low, high)`` the y axis would span.
         dropped_rows: Rows removed by the x window.
+        source_rows: Rows in the frame this was prepared from, before the
+            window was applied. Transforms that drop rows shrink it, so
+            ``represented_rows`` measures how much of the original data a
+            variant still stands on.
     """
 
     frame: pd.DataFrame
     spec: ChartSpec
     y_domain: tuple[float, float]
     dropped_rows: int = 0
+    source_rows: int = 0
+
+    @property
+    def represented_rows(self) -> int:
+        """Source rows still represented in the plotted values."""
+        return max(self.source_rows - self.dropped_rows, 0)
 
     @property
     def series_names(self) -> tuple[str, ...]:
@@ -90,6 +100,7 @@ def prepare(frame: pd.DataFrame, spec: ChartSpec) -> PreparedChart:
         spec=spec,
         y_domain=_y_domain(long[VALUE], spec),
         dropped_rows=dropped,
+        source_rows=len(frame),
     )
 
 

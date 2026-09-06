@@ -70,7 +70,14 @@ For each variant, compute and display:
 - **Magnitude ratio** — apparent effect size ÷ true effect size.
 - **Data fidelity** — % of original rows still represented.
 
-Scores are heuristics, labeled as such in the UI.
+Scores are heuristics, labeled as such in the UI. Slope and magnitude are
+computed per series against the shared y axis and then averaged: a reader of a
+multi-line chart sees the individual lines, not their sum.
+
+Two distortions these four numbers do not catch, pinned by tests rather than
+left implicit: a shift in level with an unchanged slope (mean vs. median on a
+skewed distribution), and `dual_axis`, which lives in the renderer and so does
+not reach the prepared values at all. Revisit both once Stage 2 exists.
 
 ### FR-5 Claim evaluation
 - User enters a plain-text claim and marks its direction (up/down/no change).
@@ -157,7 +164,7 @@ tested. It fixes the order in which distortions hit the numbers —
 `window -> aggregate -> smooth -> accumulate -> restate` — and owns the honest
 axis defaults. Stage 2 now only needs to turn its output into marks.
 
-### Stage 4 — Impact scoring (1–2 days)
+### Stage 4 — Impact scoring (1–2 days) — done
 Direction flip, slope ratio, magnitude ratio, fidelity. Calibrated against
 hand-checked cases in the sample data.
 *Exit:* scores match expected values on a fixture set of known distortions.

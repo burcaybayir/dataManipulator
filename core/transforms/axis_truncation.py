@@ -46,6 +46,11 @@ class TruncatedAxis(Transform):
         floor = self.floor if self.floor is not None else self._computed_floor(frame, spec)
         if spec.y_max is not None and floor >= spec.y_max:
             raise TransformError(f"floor {floor} is at or above the axis maximum {spec.y_max}")
+        if floor <= prepared_or_error(frame, spec).y_domain[0]:
+            raise TransformError(
+                f"a floor of {floor:.4g} would not truncate anything: the series already "
+                "reaches the bottom of its axis"
+            )
         return frame, self._stamp(spec, y_min=floor)
 
     def _computed_floor(self, frame: pd.DataFrame, spec: ChartSpec) -> float:

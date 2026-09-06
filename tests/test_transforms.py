@@ -162,6 +162,14 @@ def test_truncated_axis_rejects_a_floor_above_the_ceiling(
         TruncatedAxis(floor=500.0).apply(frame, spec.evolve(y_max=200.0))
 
 
+def test_truncated_axis_refuses_when_there_is_nothing_to_truncate(spec: ChartSpec) -> None:
+    # A series reaching zero already fills its axis, so the computed floor
+    # would sit below the baseline's — extending the axis, not truncating it.
+    touching_zero = pd.DataFrame({"month": ["a", "b"], "revenue": [0.0, 100.0]})
+    with pytest.raises(TransformError, match="would not truncate anything"):
+        TruncatedAxis().apply(touching_zero, spec.evolve(x="month"))
+
+
 def test_truncated_axis_needs_values_to_measure(spec: ChartSpec) -> None:
     blank = pd.DataFrame({"month": ["a"], "revenue": [float("nan")]})
     with pytest.raises(TransformError, match="no values"):

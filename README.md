@@ -20,7 +20,7 @@ Full requirements and the staged plan: [`docs/SPEC.md`](docs/SPEC.md).
 | 1 | `ChartSpec`, ingestion + profiling, sample data | done |
 | 2 | Baseline rendering | next — needs the Altair/Plotly call |
 | 3 | Transform engine | done |
-| 4 | Impact scoring | |
+| 4 | Impact scoring | done |
 | 5 | Gallery and claim evaluation | |
 | 6 | Export and provenance | |
 | 7 | Polish and ship | |
@@ -80,6 +80,25 @@ distorted.notes                         # every technique that got it there
 The notes travel with the spec into every export, so a variant can always be
 traced back to the baseline it came from.
 
+Then score how differently it reads:
+
+```python
+from core.scoring import score_stack
+
+variant, scores = score_stack(dataset.frame, spec, stack)
+scores.slope_ratio      # 21.7 — the line as drawn, against the baseline's
+scores.direction_flip   # True — the naive reading reverses
+scores.data_fidelity    # 0.17 — it stands on 17% of the rows
+scores.summary()        # a caption, phrased as the estimate it is
+```
+
+Four numbers, all heuristics: they model a reader who looks at where each line
+starts and ends and how much of the frame the change fills. Two things they
+deliberately do not catch — a shift in level with no change in slope, and a
+second y axis — are documented in `core/scoring.py` and pinned by tests, so a
+future metric that starts catching one fails loudly instead of quietly
+changing what the scores mean.
+
 ## Transform library
 
 Twelve techniques, each a pure `(DataFrame, ChartSpec) -> (DataFrame,
@@ -104,6 +123,7 @@ core/            analysis library — no UI code
   ingest.py      loading, type inference, profiling, validation
   prepare.py     spec + data -> the values a chart would draw
   transforms/    one module per distortion technique, plus the registry
+  scoring.py     how differently a variant reads from its baseline
   manifest.py    reproducible source-hash + spec + stack
   samples.py     access to the bundled demo datasets
 data/samples/    demo datasets + the deterministic generator that builds them
@@ -116,9 +136,14 @@ tests/           unit tests for everything in core/
 | Sample | What it is | Built to demonstrate |
 |---|---|---|
 | `saas_mrr` | 36 months of MRR, growth with one bad quarter | truncated axis, cherry-picked window, cumulative |
-| `support_tickets` | Two noisy years of daily volume, flat trend | smoothing, aggregation swap, cherry-picked window |
-| `regional_sales` | Eight regions, heavy long tail, eight quarters | bin regrouping, aggregation swap, ratio vs. absolute |
+| `support_tickets` | Two noisy years of daily volume, flat trend | smoothing, cherry-picked window, dropped outliers |
+| `regional_sales` | Eight regions, heavy long tail, eight quarters | bin regrouping, ratio vs. absolute |
 | `messy_inventory` | Deliberately dirty export | the validation path |
+
+Each sample names the chart its claims are calibrated against (`sample.spec()`)
+— a technique only distorts the reading of a particular chart, and swapping the
+measure can turn any of them into a no-op. Those claims are enforced in
+`tests/test_scoring_samples.py`.
 
 They are generated deterministically; `python data/samples/generate.py`
 reproduces the committed CSVs byte for byte.
