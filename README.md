@@ -18,8 +18,8 @@ Full requirements and the staged plan: [`docs/SPEC.md`](docs/SPEC.md).
 |---|---|---|
 | 0 | Project setup, lint/type/test tooling, CI | done |
 | 1 | `ChartSpec`, ingestion + profiling, sample data | done |
-| 2 | Baseline rendering | next |
-| 3 | Transform engine | |
+| 2 | Baseline rendering | next — needs the Altair/Plotly call |
+| 3 | Transform engine | done |
 | 4 | Impact scoring | |
 | 5 | Gallery and claim evaluation | |
 | 6 | Export and provenance | |
@@ -60,12 +60,51 @@ from core.ingest import ColumnType
 dataset = dataset.retype("zip_code", ColumnType.CATEGORICAL)
 ```
 
+Then distort it, deliberately and on the record:
+
+```python
+from core.prepare import prepare
+from core.transforms import CherryPickedWindow, TransformStack, TruncatedAxis
+
+stack = TransformStack().push(
+    CherryPickedWindow.favouring(dataset.frame, spec, direction="down", length=5),
+    TruncatedAxis(),
+)
+frame, distorted = stack.apply(dataset.frame, spec)
+
+prepare(dataset.frame, spec).y_domain   # (0.0, 120512.17) — the honest baseline
+prepare(frame, distorted).y_domain      # (64788.2, 70992.4) — the same data, panicking
+distorted.notes                         # every technique that got it there
+```
+
+The notes travel with the spec into every export, so a variant can always be
+traced back to the baseline it came from.
+
+## Transform library
+
+Twelve techniques, each a pure `(DataFrame, ChartSpec) -> (DataFrame,
+ChartSpec)` function carrying its own explanation, why it misleads, and when
+it is legitimate — most of them are legitimate somewhere, which is exactly why
+they work as deceptions.
+
+`truncated_axis` · `inverted_axis` · `cherry_picked_window` ·
+`aggregation_swap` · `ratio_vs_absolute` · `rebase_index` · `bin_regrouping` ·
+`smoothing` · `cumulative` · `dual_axis` · `aspect_ratio` · `outlier_drop`
+
+Adding a thirteenth means one module in `core/transforms/` decorated with
+`@register`; nothing in the UI or scoring code changes. Stacks are capped at
+five transforms, past which no single technique explains the difference and
+the impact scores stop being attributable.
+
 ## Layout
 
 ```
 core/            analysis library — no UI code
   spec.py        ChartSpec: the object transforms rewrite
   ingest.py      loading, type inference, profiling, validation
+  prepare.py     spec + data -> the values a chart would draw
+  transforms/    one module per distortion technique, plus the registry
+  manifest.py    reproducible source-hash + spec + stack
   samples.py     access to the bundled demo datasets
 data/samples/    demo datasets + the deterministic generator that builds them
 docs/SPEC.md     requirements, architecture, staged plan

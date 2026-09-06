@@ -151,7 +151,12 @@ class ChartSpec:
 
     @property
     def requires_zero_baseline(self) -> bool:
-        """Whether truncating this chart's y axis would misstate magnitudes."""
+        """Whether truncating this chart's y axis is indefensible.
+
+        Every family is drawn zero-based by default. In these ones the mark's
+        *length* encodes the value, so a raised floor misstates magnitudes
+        outright rather than merely exaggerating a trend.
+        """
         return self.family in LENGTH_ENCODED_FAMILIES
 
     def to_dict(self) -> dict[str, Any]:

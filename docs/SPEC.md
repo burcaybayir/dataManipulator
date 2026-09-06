@@ -36,7 +36,9 @@ the parameter used, and the size of the effect on the reader's impression.
 - User selects chart family (line, bar, area, scatter, pie), x field, y field,
   optional series field, and aggregation (sum, mean, median, count).
 - Baseline chart is rendered with defensible defaults: zero-based y-axis for
-  bar/area, full available time range, absolute values, no smoothing.
+  every family, full available range, absolute values, no smoothing. Line and
+  scatter charts may defensibly start above zero, but only via an explicit,
+  labeled `truncated_axis` transform — never silently in the baseline.
 
 ### FR-3 Transform library
 Each transform is a named, parameterized, pure function over `(DataFrame,
@@ -143,11 +145,17 @@ unit tests pass.
 enforced. Minimal Streamlit page: upload → configure → see baseline.
 *Exit:* end-to-end upload-to-chart works for all five chart families.
 
-### Stage 3 — Transform engine (3–4 days)
+### Stage 3 — Transform engine (3–4 days) — done
 Registry, the twelve transforms above, composition, and the manifest format.
 Each transform ships with its own tests and metadata.
 *Exit:* any transform stack applies cleanly; round-trips through a manifest;
 100% test coverage on `core/transforms/`.
+
+Built alongside it: `core/prepare.py`, the data half of Stage 2's renderer,
+pulled forward because a transform that changes nothing observable cannot be
+tested. It fixes the order in which distortions hit the numbers —
+`window -> aggregate -> smooth -> accumulate -> restate` — and owns the honest
+axis defaults. Stage 2 now only needs to turn its output into marks.
 
 ### Stage 4 — Impact scoring (1–2 days)
 Direction flip, slope ratio, magnitude ratio, fidelity. Calibrated against
@@ -185,4 +193,7 @@ critical path; everything after 4 can ship incrementally.
 1. Altair or Plotly? Altair is declarative and matches the spec model; Plotly
    has better interactivity and PNG export. Leaning Altair with `vl-convert`.
 2. Should distorted PNGs be watermarked visibly, or is the footer enough?
-3. Do we cap the transform stack depth to keep impact scores interpretable?
+3. ~~Do we cap the transform stack depth to keep impact scores interpretable?~~
+   Resolved in Stage 3: capped at five (`core.transforms.stack.MAX_DEPTH`).
+   Beyond that no single technique explains the difference from the baseline,
+   so a score cannot be attributed to one.

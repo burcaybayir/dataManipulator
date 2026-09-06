@@ -29,6 +29,8 @@ packages = ["core"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Code samples in Markdown are laid out for reading, not for the formatter.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
